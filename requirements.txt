@@ -6,3 +6,10 @@ plotly
 geopandas
 matplotlib
 seaborn
+wordcloud
+re
+string
+textblob
+transformers
+tqdm
+numpy

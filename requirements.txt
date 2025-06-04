@@ -5,3 +5,4 @@ nltk
 plotly
 geopandas
 matplotlib
+seaborn

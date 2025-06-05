@@ -84,6 +84,66 @@ if uploaded_file:
 
     st.subheader("📄 Données enrichies (Feedbacks + Clusters)")
     st.dataframe(df[['id_activite', 'date', 'type_activite', 'région', 'feedback', 'Cluster']])
+    
+    # === 📅 Évolution temporelle des sentiments ===
+    st.subheader("📅 Évolution temporelle des sentiments")
+
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    df['sentiment'] = df['sentiment'].astype(float)
+
+    def classer_sentiment(score):
+        if score > 0.1:
+            return 'POS'
+        elif score < -0.1:
+            return 'NEG'
+        else:
+            return 'NEU'
+
+    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
+    df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()
+    df_filtered['mois_annee'] = df_filtered['date'].dt.to_period('M').astype(str)
+
+    sentiment_par_mois = df_filtered.groupby(['mois_annee', 'sentiment_label']).size().unstack(fill_value=0)
+    mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
+
+    from sklearn.linear_model import LinearRegression
+    fig = plt.figure(figsize=(12, 6))
+    sentiment_par_mois.plot(kind='bar', color={'POS': '#66bb6a', 'NEG': '#ef5350'}, edgecolor='black', width=0.75, ax=plt.gca())
+
+    for sentiment in ['POS', 'NEG']:
+        y = sentiment_par_mois[sentiment].values
+        model = LinearRegression().fit(mois_index, y)
+        trend = model.predict(mois_index)
+        plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
+
+    plt.title("Évolution des sentiments par mois avec tendance")
+    plt.xlabel("Mois-Année")
+    plt.ylabel("Nombre de feedbacks")
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(title="Légende")
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # 🔎 Commentaire automatique
+    last = sentiment_par_mois.iloc[-1]
+    first = sentiment_par_mois.iloc[0]
+    commentaire = "🔎 **Analyse automatique :**\\n"
+    evolution_pos = last['POS'] - first['POS']
+    evolution_neg = last['NEG'] - first['NEG']
+    if evolution_pos > 0:
+        commentaire += f"- Les feedbacks **positifs ont augmenté** de {evolution_pos}.\\n"
+    elif evolution_pos < 0:
+        commentaire += f"- Les feedbacks **positifs ont diminué** de {-evolution_pos}.\\n"
+    else:
+        commentaire += "- Les feedbacks **positifs sont restés stables**.\\n"
+    if evolution_neg > 0:
+        commentaire += f"- Les feedbacks **négatifs ont augmenté** de {evolution_neg}.\\n"
+    elif evolution_neg < 0:
+        commentaire += f"- Les feedbacks **négatifs ont diminué** de {-evolution_neg}.\\n"
+    else:
+        commentaire += "- Les feedbacks **négatifs sont restés stables**.\\n"
+    st.markdown(commentaire)
 
 else:
     st.info("Veuillez importer un fichier CSV pour démarrer l’analyse.")

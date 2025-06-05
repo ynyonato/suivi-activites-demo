@@ -13,8 +13,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
 from nltk.corpus import stopwords
+from textblob import TextBlob
 
 # Setup
+nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('french'))
 
@@ -87,6 +89,22 @@ if uploaded_file:
     
     # === 📅 Évolution temporelle des sentiments ===
     st.subheader("📅 Évolution temporelle des sentiments")
+    
+    def compute_sentiment(text):
+    return TextBlob(text).sentiment.polarity
+
+    df['sentiment'] = df['Feedback_clean'].apply(compute_sentiment)
+
+    # Catégoriser
+    def classify_sentiment(score):
+        if score > 0.1:
+            return 'positif'
+        elif score < -0.1:
+            return 'négatif'
+        else:
+            return 'neutre'
+
+    df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
 
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
     df['sentiment'] = df['sentiment'].astype(float)
@@ -144,6 +162,38 @@ if uploaded_file:
     else:
         commentaire += "- Les feedbacks **négatifs sont restés stables**.\\n"
     st.markdown(commentaire)
+    
+    # 🧠 Visualisations basées sur les sentiments
+    if 'sentiment' in df.columns and 'sentiment_cat' in df.columns:
+
+        st.subheader("📈 Analyse des sentiments par activité et localisation")
+
+        # 1. Graphique des sentiments par type d'activité
+        st.markdown("**🎭 Sentiments par type d’activité**")
+        fig_sentiment_type = plt.figure(figsize=(10,6))
+        sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
+        plt.title("Sentiments par Type d'Activité")
+        plt.xticks(rotation=45)
+        st.pyplot(fig_sentiment_type)
+
+        # 2. Moyenne de sentiment par localisation
+        st.markdown("**📍 Moyenne du score de sentiment par localisation**")
+        sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
+        fig_sentiment_loc = plt.figure(figsize=(8,5))
+        sentiment_localisation.plot(kind='bar', color='skyblue')
+        plt.title("Moyenne du sentiment par localisation")
+        plt.ylabel("Score moyen de sentiment")
+        st.pyplot(fig_sentiment_loc)
+
+        # 3. Boxplot nombre participants vs sentiment
+        st.markdown("**👥 Nombre de participants selon le sentiment**")
+        fig_box = plt.figure(figsize=(8,5))
+        sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
+        plt.title("Nombre de participants selon sentiment")
+        st.pyplot(fig_box)
+    else:
+        st.info("⚠️ Les colonnes `sentiment` et `sentiment_cat` sont absentes. Veuillez intégrer l'analyse de sentiment pour activer ces visualisations.")
+
 
 else:
     st.info("Veuillez importer un fichier CSV pour démarrer l’analyse.")

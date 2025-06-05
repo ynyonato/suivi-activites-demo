@@ -15,14 +15,14 @@ from sklearn.manifold import TSNE
 from nltk.corpus import stopwords
 from textblob import TextBlob
 from sklearn.linear_model import LinearRegression
+from keybert import KeyBERT
 
-# Setup
 nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('french'))
 
-st.set_page_config(page_title="Analyse de Feedbacks - Suivi d'Activités", layout="wide")
-st.title("📊 Analyse Automatisée de Feedbacks (Suivi & Évaluation de Projets)")
+st.set_page_config(page_title="Analyse Feedbacks + Clustering IA", layout="wide")
+st.title("🧠 Analyse Automatisée de Feedbacks avec Thèmes IA")
 
 uploaded_file = st.file_uploader("📤 Importez votre fichier CSV `suivi_activites.csv`", type=["csv"])
 
@@ -30,10 +30,8 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
     st.success("✅ Fichier chargé avec succès.")
-    st.subheader("👁️ Aperçu des données brutes")
     st.dataframe(df.head())
 
-    # Nettoyage du texte
     def clean_text(text):
         if pd.isnull(text):
             return ""
@@ -45,7 +43,7 @@ if uploaded_file:
 
     df['Feedback_clean'] = df['feedback'].apply(clean_text)
 
-    # Sentiment analysis
+    # Sentiment
     def compute_sentiment(text):
         return TextBlob(text).sentiment.polarity
 
@@ -62,127 +60,58 @@ if uploaded_file:
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
 
     # Wordcloud
-    st.subheader("☁️ Nuage de mots sur les feedbacks")
-    text = ' '.join(df['Feedback_clean'])
-    wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(text)
+    st.subheader("☁️ Nuage de mots")
+    wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(' '.join(df['Feedback_clean']))
     plt.figure(figsize=(12, 5))
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
     st.pyplot(plt)
 
-    # TF-IDF + Clustering + t-SNE
-    st.subheader("📌 Clustering thématique avec TF-IDF + KMeans + t-SNE")
+    # TF-IDF + Clustering
+    st.subheader("📌 Clustering thématique + renommage automatique avec IA")
     vectorizer = TfidfVectorizer(max_features=500, max_df=0.8, min_df=5)
     X = vectorizer.fit_transform(df['Feedback_clean'])
 
-    kmeans = KMeans(n_clusters=5, random_state=42)
+    n_clusters = 5
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     df['Cluster'] = kmeans.fit_predict(X)
 
+    # Renommage auto avec KeyBERT
+    kw_model = KeyBERT(model='distilbert-base-nli-mean-tokens')
+    cluster_labels_ai = {}
+    for i in range(n_clusters):
+        cluster_text = " ".join(df[df['Cluster'] == i]['Feedback_clean'])
+        if cluster_text.strip():
+            keywords = kw_model.extract_keywords(cluster_text, keyphrase_ngram_range=(1, 3),
+                                                 stop_words='french', top_n=1)
+            if keywords:
+                label = keywords[0][0].capitalize()
+            else:
+                label = f"Thème {i}"
+        else:
+            label = f"Thème {i}"
+        cluster_labels_ai[i] = label
+        st.markdown(f"**Cluster {i} ➜ {label}**")
+
+    df['Cluster_Label'] = df['Cluster'].map(cluster_labels_ai)
+
+    # t-SNE
     tsne = TSNE(n_components=2, random_state=42)
     X_embedded = tsne.fit_transform(X.toarray())
     df['Dim1'] = X_embedded[:, 0]
     df['Dim2'] = X_embedded[:, 1]
 
-    fig = px.scatter(df, x='Dim1', y='Dim2', color=df['Cluster'].astype(str),
-                     hover_data=['feedback', 'région', 'type_activite'],
-                     title="📍 Visualisation t-SNE des clusters de feedbacks")
+    fig = px.scatter(
+        df, x='Dim1', y='Dim2',
+        color='Cluster_Label',
+        hover_data=['feedback', 'type_activite', 'région'],
+        title="📍 Visualisation t-SNE avec thèmes IA"
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("📊 Nombre de feedbacks par thème (Cluster)")
-    st.bar_chart(df['Cluster'].value_counts().sort_index())
-
-    st.subheader("🗺️ Activités par région")
-    region_counts = df['région'].value_counts()
-    fig2 = px.bar(region_counts, x=region_counts.index, y=region_counts.values,
-                  labels={'x': 'Région', 'y': "Nombre d'activités"},
-                  title="Nombre d'activités par région")
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.subheader("📄 Données enrichies (Feedbacks + Clusters)")
-    st.dataframe(df[['id_activite', 'date', 'type_activite', 'région', 'feedback', 'Cluster']])
-
-    # Évolution temporelle des sentiments
-    st.subheader("📅 Évolution temporelle des sentiments")
-
-    df['date'] = pd.to_datetime(df['date'], errors='coerce')
-    df['sentiment'] = df['sentiment'].astype(float)
-
-    def classer_sentiment(score):
-        if score > 0.1:
-            return 'POS'
-        elif score < -0.1:
-            return 'NEG'
-        else:
-            return 'NEU'
-
-    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
-    df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()
-    df_filtered['mois_annee'] = df_filtered['date'].dt.to_period('M').astype(str)
-
-    sentiment_par_mois = df_filtered.groupby(['mois_annee', 'sentiment_label']).size().unstack(fill_value=0)
-    mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
-
-    fig = plt.figure(figsize=(12, 6))
-    sentiment_par_mois.plot(kind='bar', color={'POS': '#66bb6a', 'NEG': '#ef5350'}, edgecolor='black', width=0.75, ax=plt.gca())
-
-    for sentiment in ['POS', 'NEG']:
-        y = sentiment_par_mois[sentiment].values
-        model = LinearRegression().fit(mois_index, y)
-        trend = model.predict(mois_index)
-        plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
-
-    plt.title("Évolution des sentiments par mois avec tendance")
-    plt.xlabel("Mois-Année")
-    plt.ylabel("Nombre de feedbacks")
-    plt.xticks(rotation=45)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.legend(title="Légende")
-    plt.tight_layout()
-    st.pyplot(fig)
-
-    # Commentaire automatique
-    last = sentiment_par_mois.iloc[-1]
-    first = sentiment_par_mois.iloc[0]
-    commentaire = "🔎 **Analyse automatique :**\n"
-    evolution_pos = last['POS'] - first['POS']
-    evolution_neg = last['NEG'] - first['NEG']
-    if evolution_pos > 0:
-        commentaire += f"- Les feedbacks **positifs ont augmenté** de {evolution_pos}.\n"
-    elif evolution_pos < 0:
-        commentaire += f"- Les feedbacks **positifs ont diminué** de {-evolution_pos}.\n"
-    else:
-        commentaire += "- Les feedbacks **positifs sont restés stables**.\n"
-    if evolution_neg > 0:
-        commentaire += f"- Les feedbacks **négatifs ont augmenté** de {evolution_neg}.\n"
-    elif evolution_neg < 0:
-        commentaire += f"- Les feedbacks **négatifs ont diminué** de {-evolution_neg}.\n"
-    else:
-        commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
-    st.markdown(commentaire)
-
-    # Visualisations par sentiment
-    st.subheader("📈 Analyse des sentiments par activité et localisation")
-
-    st.markdown("**🎭 Sentiments par type d’activité**")
-    fig_sentiment_type = plt.figure(figsize=(10,6))
-    sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
-    plt.title("Sentiments par Type d'Activité")
-    plt.xticks(rotation=45)
-    st.pyplot(fig_sentiment_type)
-
-    st.markdown("**📍 Moyenne du score de sentiment par localisation**")
-    sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
-    fig_sentiment_loc = plt.figure(figsize=(8,5))
-    sentiment_localisation.plot(kind='bar', color='skyblue')
-    plt.title("Moyenne du sentiment par localisation")
-    plt.ylabel("Score moyen de sentiment")
-    st.pyplot(fig_sentiment_loc)
-
-    st.markdown("**👥 Nombre de participants selon le sentiment**")
-    fig_box = plt.figure(figsize=(8,5))
-    sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
-    plt.title("Nombre de participants selon sentiment")
-    st.pyplot(fig_box)
+    # Affichage enrichi
+    st.subheader("📄 Données enrichies")
+    st.dataframe(df[['id_activite', 'date', 'type_activite', 'région', 'feedback', 'Cluster_Label', 'sentiment_cat']])
 
 else:
-    st.info("Veuillez importer un fichier CSV pour démarrer l’analyse.")
+    st.info("Veuillez importer un fichier CSV pour commencer.")

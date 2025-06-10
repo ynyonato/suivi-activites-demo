@@ -100,13 +100,13 @@ if uploaded_file:
     df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
     feedbacks = df['feedback'].astype(str).tolist()
     # Pipeline de sentiment en français
-    sentiment_model = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment") # model="tblard/tf-allocine")
+    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
 
     # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
     df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])
 
     # Traitement par batchs
-    batch_size = 2
+    batch_size = 4
     sentiments = []
 
     for i in tqdm(range(0, len(feedbacks), batch_size)):

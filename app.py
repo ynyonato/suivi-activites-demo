@@ -21,7 +21,6 @@ from tqdm import tqdm
 
 nltk.download('punkt')
 nltk.download('stopwords')
-textblob.download_corpora()
 stop_words = set(stopwords.words('french'))
 
 st.set_page_config(page_title="Analyse Feedbacks + Clustering IA", layout="wide")

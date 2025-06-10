@@ -14,13 +14,13 @@ from sklearn.manifold import TSNE
 from nltk.corpus import stopwords
 from textblob import TextBlob
 from sklearn.linear_model import LinearRegression
-from keybert import KeyBERT
-import openai
+from openai import OpenAI
 
 nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('french'))
-openai.api_key = st.secrets["openai"]["api_key"]
+# Initialiser le client avec la clé
+client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 st.set_page_config(page_title="Analyse Feedbacks + Clustering IA", layout="wide")
 st.title("🧠 Analyse Automatisée de Feedbacks avec Thèmes IA")
@@ -72,7 +72,7 @@ if uploaded_file:
             f"Quel est le thème commun à ces retours ? "
             f"Réponds par un nom de thème clair, humainement compréhensible (3 à 6 mots max)."
         )
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
@@ -140,7 +140,17 @@ if uploaded_file:
     mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
 
     sentiment_par_mois = sentiment_par_mois.astype(int)
+    
+    # Tracer le graphique avec lignes de tendance
+    plt.figure(figsize=(12, 6))
 
+    sentiment_par_mois.plot(
+        kind='bar',
+        color={'POS': '#66bb6a', 'NEG': '#ef5350'},
+        edgecolor='black',
+        width=0.75,
+        ax=plt.gca()
+    )
     # Ajout des courbes de tendance
     for sentiment in ['POS', 'NEG']:
         y = sentiment_par_mois[sentiment].values

@@ -15,13 +15,12 @@ from nltk.corpus import stopwords
 from textblob import TextBlob
 from sklearn.linear_model import LinearRegression
 from keybert import KeyBERT
-from transformers import pipeline
-from tqdm import tqdm
-
+import openai
 
 nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('french'))
+openai.api_key = st.secrets["openai"]["api_key"]
 
 st.set_page_config(page_title="Analyse Feedbacks + Clustering IA", layout="wide")
 st.title("🧠 Analyse Automatisée de Feedbacks avec Thèmes IA")
@@ -64,6 +63,22 @@ if uploaded_file:
             return 'NEG'
         else:
             return 'NEU' 
+        
+    # LLM to generate theme labels
+    def generate_theme_from_feedbacks(feedbacks):
+        joined = "\n".join([f"- {f}" for f in feedbacks])
+        prompt = (
+            f"Voici des retours d’utilisateurs :\n{joined}\n\n"
+            f"Quel est le thème commun à ces retours ? "
+            f"Réponds par un nom de thème clair, humainement compréhensible (3 à 6 mots max)."
+        )
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+       
 
     # Conversion des données de la colonne Date en type date
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
@@ -126,18 +141,6 @@ if uploaded_file:
 
     sentiment_par_mois = sentiment_par_mois.astype(int)
 
-    # Tracer le graphique avec lignes de tendance
-    plt.figure(figsize=(12, 6))
-
-    sentiment_par_mois.plot(
-        kind='bar',
-        color={'POS': '#66bb6a', 'NEG': '#ef5350'},
-        edgecolor='black',
-        width=0.75,
-        ax=plt.gca()
-    )
-    st.pyplot(plt)
-
     # Ajout des courbes de tendance
     for sentiment in ['POS', 'NEG']:
         y = sentiment_par_mois[sentiment].values
@@ -179,7 +182,7 @@ if uploaded_file:
     else:
         commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
 
-    print(commentaire)
+    st.markdown(commentaire)
 
     # TF-IDF + Clustering
     st.subheader("📌 Clustering thématique + renommage automatique avec IA")
@@ -190,24 +193,19 @@ if uploaded_file:
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     df['Cluster'] = kmeans.fit_predict(X)
 
-    # Renommage auto avec KeyBERT
-    kw_model = KeyBERT(model='distilbert-base-nli-mean-tokens')
-    cluster_labels_ai = {}
+    # Génération des labels par LLM
+    cluster_labels_llm = {}
     for i in range(n_clusters):
-        cluster_text = " ".join(df[df['Cluster'] == i]['Feedback_clean'])
-        if cluster_text.strip():
-            keywords = kw_model.extract_keywords(cluster_text, keyphrase_ngram_range=(1, 3),
-                                                 stop_words='french', top_n=1)
-            if keywords:
-                label = keywords[0][0].capitalize()
-            else:
-                label = f"Thème {i}"
-        else:
-            label = f"Thème {i}"
-        cluster_labels_ai[i] = label
-        st.markdown(f"**Cluster {i} ➜ {label}**")
-
-    df['Cluster_Label'] = df['Cluster'].map(cluster_labels_ai)
+         feedbacks = df[df['Cluster'] == i]['feedback'].dropna().sample(min(10, len(df[df['Cluster'] == i]))).tolist()
+         try:
+             label = generate_theme_from_feedbacks(feedbacks)
+         except Exception as e:
+             label = f"Thème {i}"
+             st.warning(f"Erreur dans le cluster {i} : {e}")
+         cluster_labels_llm[i] = label
+         st.markdown(f"**Cluster {i} ➜ {label}**")
+         
+         df['Cluster_Label'] = df['Cluster'].map(cluster_labels_llm)
 
     # t-SNE
     tsne = TSNE(n_components=2, random_state=42)

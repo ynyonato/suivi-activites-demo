@@ -98,39 +98,40 @@ if uploaded_file:
     # Nettoyage des feedbacks
     df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
     feedbacks = df['feedback'].astype(str).tolist()
-    # Pipeline de sentiment en français
-    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
+    
+#    # Pipeline de sentiment en français
+#    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
+#
+#    # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
+#    df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])
+#
+#    # Traitement par batchs
+#    batch_size = 4
+#    sentiments = []
 
-    # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
-    df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])
-
-    # Traitement par batchs
-    batch_size = 4
-    sentiments = []
-
-    for i in tqdm(range(0, len(feedbacks), batch_size)):
-        batch = feedbacks[i:i+batch_size]
-        # Tronquer les textes trop longs (optionnel)
-        batch = [text[:512] for text in batch]
-        results = sentiment_model(batch)
-        sentiments.extend([res['label'] for res in results])
+#   for i in tqdm(range(0, len(feedbacks), batch_size)):
+#        batch = feedbacks[i:i+batch_size]
+#        # Tronquer les textes trop longs (optionnel)
+#        batch = [text[:512] for text in batch]
+#        results = sentiment_model(batch)
+#        sentiments.extend([res['label'] for res in results])
 
     # Ajouter la colonne au DataFrame
-    df = df.reset_index(drop=True)
-    df['sentiment'] = sentiments
-
-    ## Analyse temporelle des sentiments
-    # Convertir en float si ce n’est pas déjà fait
-    df['sentiment'] = df['sentiment'].astype(float)
+#    df = df.reset_index(drop=True)
+#    df['sentiment'] = sentiments
+#
+#    ## Analyse temporelle des sentiments
+#    # Convertir en float si ce n’est pas déjà fait
+#    df['sentiment'] = df['sentiment'].astype(float)
 
     # Créer une nouvelle colonne avec labels
-    def classer_sentiment(score):
-        if score > 0.1:
-            return 'POS'
-        elif score < -0.1:
-            return 'NEG'
-        else:
-            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
+#    def classer_sentiment(score):
+#        if score > 0.1:
+#            return 'POS'
+#        elif score < -0.1:
+#            return 'NEG'
+#        else:
+#            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
 
     df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
 

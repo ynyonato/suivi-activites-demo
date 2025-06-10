@@ -79,7 +79,8 @@ if uploaded_file:
     sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
     plt.title("Sentiments par Type d'Activité \n")
     plt.xticks(rotation=45)
-    plt.show()
+    #plt.show()
+    st.pyplot(plt)
 
     # Moyenne de sentiment par localisation
     sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
@@ -87,13 +88,15 @@ if uploaded_file:
     sentiment_localisation.plot(kind='bar', color='skyblue')
     plt.title("Moyenne du sentiment par localisation \n")
     plt.ylabel("Score moyen de sentiment \n")
-    plt.show()
+    #plt.show()
+    st.pyplot(plt)
 
     # Croisement nombre participants vs sentiment (boxplot)
     plt.figure(figsize=(8,5))
     sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
     plt.title("Nombre de participants selon sentiment \n")
     plt.show()
+    st.pyplot(plt)
 
     # Wordcloud
     st.subheader("☁️ Nuage de mots")
@@ -107,40 +110,6 @@ if uploaded_file:
     df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
     feedbacks = df['feedback'].astype(str).tolist()
     
-#    # Pipeline de sentiment en français
-#    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
-#
-#    # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
-#    df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])
-#
-#    # Traitement par batchs
-#    batch_size = 4
-#    sentiments = []
-
-#   for i in tqdm(range(0, len(feedbacks), batch_size)):
-#        batch = feedbacks[i:i+batch_size]
-#        # Tronquer les textes trop longs (optionnel)
-#        batch = [text[:512] for text in batch]
-#        results = sentiment_model(batch)
-#        sentiments.extend([res['label'] for res in results])
-
-    # Ajouter la colonne au DataFrame
-#    df = df.reset_index(drop=True)
-#    df['sentiment'] = sentiments
-#
-#    ## Analyse temporelle des sentiments
-#    # Convertir en float si ce n’est pas déjà fait
-#    df['sentiment'] = df['sentiment'].astype(float)
-
-    # Créer une nouvelle colonne avec labels
-#    def classer_sentiment(score):
-#        if score > 0.1:
-#            return 'POS'
-#        elif score < -0.1:
-#            return 'NEG'
-#        else:
-#            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
-
     df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
 
     # Créer une copie filtrée pour analyse
@@ -167,6 +136,7 @@ if uploaded_file:
         width=0.75,
         ax=plt.gca()
     )
+    st.pyplot(plt)
 
     # Ajout des courbes de tendance
     for sentiment in ['POS', 'NEG']:
@@ -184,6 +154,7 @@ if uploaded_file:
     plt.legend(title="Légende")
     plt.tight_layout()
     plt.show()
+    st.pyplot(plt)
 
     # === Génération d'un commentaire automatique ===
     last = sentiment_par_mois.iloc[-1]

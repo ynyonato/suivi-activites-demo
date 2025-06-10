@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 nltk.download('punkt')
 nltk.download('stopwords')
+textblob.download_corpora()
 stop_words = set(stopwords.words('french'))
 
 st.set_page_config(page_title="Analyse Feedbacks + Clustering IA", layout="wide")
@@ -63,10 +64,6 @@ if uploaded_file:
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
 
     # ANALYSE EXPLORATOIRE DE BASE (EDA)
-    # Aperçu des statistiques descriptives des colonnes numériques
-    print("Résumé statistique des colonnes numériques :")
-    print(df.describe())  # Affiche count, mean, std, min, 25%, 50%, 75%, max pour les colonnes numériques
-
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
     
     
@@ -104,7 +101,7 @@ if uploaded_file:
     df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
     feedbacks = df['feedback'].astype(str).tolist()
     # Pipeline de sentiment en français
-    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
+    sentiment_model = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment") # model="tblard/tf-allocine")
 
     # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
     df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])

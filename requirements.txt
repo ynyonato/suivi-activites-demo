@@ -3,10 +3,13 @@ pandas
 numpy
 matplotlib
 seaborn
+plotly
 scikit-learn
 nltk
-plotly
 wordcloud
 textblob
 keybert
 sentence-transformers
+transformers
+tqdm
+pillow

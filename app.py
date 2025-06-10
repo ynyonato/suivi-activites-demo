@@ -69,11 +69,11 @@ if uploaded_file:
         joined = "\n".join([f"- {f}" for f in feedbacks])
         prompt = (
             f"Voici des retours d’utilisateurs :\n{joined}\n\n"
-            f"Quel est le thème commun à ces retours ? "
-            f"Réponds par un nom de thème clair, humainement compréhensible (3 à 6 mots max)."
+            f"En tant que Data Scientist Quel est le thème commun à ces retours qu'on peut degager ? "
+            f"Réponds juste par un nom de thème clair, humainement compréhensible (4 mots max)."
         )
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
@@ -109,7 +109,7 @@ if uploaded_file:
     # Croisement nombre participants vs sentiment (boxplot)
     plt.figure(figsize=(8,5))
     sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
-    plt.title("Nombre de participants selon sentiment \n")
+    plt.title("Répartition des participants par sentiment \n")
     plt.show()
     st.pyplot(plt)
 

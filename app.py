@@ -133,7 +133,7 @@ if uploaded_file:
 #        else:
 #            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
 
-    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
+    df['sentiment_label'] = df['sentiment'].apply(classify_sentiment)
 
     # Créer une copie filtrée pour analyse
     df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()

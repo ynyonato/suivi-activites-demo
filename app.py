@@ -43,13 +43,11 @@ if uploaded_file:
         text = ' '.join([mot for mot in text.split() if mot not in stop_words])
         return text
 
-    df['Feedback_clean'] = df['feedback'].apply(clean_text)
 
     # Sentiment
     def compute_sentiment(text):
         return TextBlob(text).sentiment.polarity
 
-    df['sentiment'] = df['Feedback_clean'].apply(compute_sentiment)
 
     def classify_sentiment(score):
         if score > 0.1:
@@ -62,10 +60,12 @@ if uploaded_file:
     # Conversion des données de la colonne Date en type date
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
 
-    # ANALYSE EXPLORATOIRE DE BASE (EDA)
+    ### ANALYSE EXPLORATOIRE DE BASE (EDA)
+    
+    df['Feedback_clean'] = df['feedback'].apply(clean_text)
+    df['sentiment'] = df['Feedback_clean'].apply(compute_sentiment)
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
-    
-    
+        
     # Graphique des sentiments par type d'activité
     plt.figure(figsize=(10,6))
     sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
@@ -75,7 +75,6 @@ if uploaded_file:
 
     # Moyenne de sentiment par localisation
     sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
-
     plt.figure(figsize=(8,5))
     sentiment_localisation.plot(kind='bar', color='skyblue')
     plt.title("Moyenne du sentiment par localisation \n")

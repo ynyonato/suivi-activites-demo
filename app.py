@@ -56,6 +56,14 @@ if uploaded_file:
             return 'négatif'
         else:
             return 'neutre'
+            
+    def classer_sentiment(score):
+        if score > 0.1:
+            return 'POS'
+        elif score < -0.1:
+            return 'NEG'
+        else:
+            return 'NEU' 
 
     # Conversion des données de la colonne Date en type date
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
@@ -133,7 +141,7 @@ if uploaded_file:
 #        else:
 #            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
 
-    df['sentiment_label'] = df['sentiment'].apply(classify_sentiment)
+    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
 
     # Créer une copie filtrée pour analyse
     df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()

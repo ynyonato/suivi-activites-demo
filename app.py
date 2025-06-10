@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -16,6 +15,9 @@ from nltk.corpus import stopwords
 from textblob import TextBlob
 from sklearn.linear_model import LinearRegression
 from keybert import KeyBERT
+from transformers import pipeline
+from tqdm import tqdm
+
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -57,7 +59,38 @@ if uploaded_file:
         else:
             return 'neutre'
 
+    # Conversion des données de la colonne Date en type date
+    df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
+
+    # ANALYSE EXPLORATOIRE DE BASE (EDA)
+    # Aperçu des statistiques descriptives des colonnes numériques
+    print("Résumé statistique des colonnes numériques :")
+    print(df.describe())  # Affiche count, mean, std, min, 25%, 50%, 75%, max pour les colonnes numériques
+
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
+    
+    
+    # Graphique des sentiments par type d'activité
+    plt.figure(figsize=(10,6))
+    sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
+    plt.title("Sentiments par Type d'Activité \n")
+    plt.xticks(rotation=45)
+    plt.show()
+
+    # Moyenne de sentiment par localisation
+    sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
+
+    plt.figure(figsize=(8,5))
+    sentiment_localisation.plot(kind='bar', color='skyblue')
+    plt.title("Moyenne du sentiment par localisation \n")
+    plt.ylabel("Score moyen de sentiment \n")
+    plt.show()
+
+    # Croisement nombre participants vs sentiment (boxplot)
+    plt.figure(figsize=(8,5))
+    sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
+    plt.title("Nombre de participants selon sentiment \n")
+    plt.show()
 
     # Wordcloud
     st.subheader("☁️ Nuage de mots")
@@ -66,6 +99,112 @@ if uploaded_file:
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
     st.pyplot(plt)
+    
+    # Nettoyage des feedbacks
+    df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
+    feedbacks = df['feedback'].astype(str).tolist()
+    # Pipeline de sentiment en français
+    sentiment_model = pipeline("sentiment-analysis", model="tblard/tf-allocine")
+
+    # Appliquer le modèle aux feedbacks (limité ici à 100 pour éviter les quotas)
+    df['sentiment'] = df['feedback'].apply(lambda x: sentiment_model(x[:512])[0]['label'])
+
+    # Traitement par batchs
+    batch_size = 2
+    sentiments = []
+
+    for i in tqdm(range(0, len(feedbacks), batch_size)):
+        batch = feedbacks[i:i+batch_size]
+        # Tronquer les textes trop longs (optionnel)
+        batch = [text[:512] for text in batch]
+        results = sentiment_model(batch)
+        sentiments.extend([res['label'] for res in results])
+
+    # Ajouter la colonne au DataFrame
+    df = df.reset_index(drop=True)
+    df['sentiment'] = sentiments
+
+    ## Analyse temporelle des sentiments
+    # Convertir en float si ce n’est pas déjà fait
+    df['sentiment'] = df['sentiment'].astype(float)
+
+    # Créer une nouvelle colonne avec labels
+    def classer_sentiment(score):
+        if score > 0.1:
+            return 'POS'
+        elif score < -0.1:
+            return 'NEG'
+        else:
+            return 'NEU'  # si tu veux ignorer les neutres, tu peux les exclure ensuite
+
+    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
+
+    # Créer une copie filtrée pour analyse
+    df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()
+
+    # Créer colonne mois-année
+    df_filtered['mois_annee'] = df_filtered['date'].dt.to_period('M').astype(str)
+
+    # Agrégation des feedbacks par mois et sentiment
+    sentiment_par_mois = df_filtered.groupby(['mois_annee', 'sentiment_label']).size().unstack(fill_value=0)
+
+    # Convertir l'index en entier pour les régressions
+    mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
+
+    sentiment_par_mois = sentiment_par_mois.astype(int)
+
+    # Tracer le graphique avec lignes de tendance
+    plt.figure(figsize=(12, 6))
+
+    sentiment_par_mois.plot(
+        kind='bar',
+        color={'POS': '#66bb6a', 'NEG': '#ef5350'},
+        edgecolor='black',
+        width=0.75,
+        ax=plt.gca()
+    )
+
+    # Ajout des courbes de tendance
+    for sentiment in ['POS', 'NEG']:
+        y = sentiment_par_mois[sentiment].values
+        model = LinearRegression().fit(mois_index, y)
+        trend = model.predict(mois_index)
+        plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
+
+    # Finalisation
+    plt.title("Évolution des sentiments par mois avec tendance \n")
+    plt.xlabel("Mois-Année")
+    plt.ylabel("Nombre de feedbacks")
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(title="Légende")
+    plt.tight_layout()
+    plt.show()
+
+    # === Génération d'un commentaire automatique ===
+    last = sentiment_par_mois.iloc[-1]
+    first = sentiment_par_mois.iloc[0]
+
+    evolution_pos = last['POS'] - first['POS']
+    evolution_neg = last['NEG'] - first['NEG']
+
+    commentaire = "🔎 **Analyse automatique :**\n"
+
+    if evolution_pos > 0:
+        commentaire += f"- Les feedbacks **positifs ont augmenté** de {evolution_pos} entre {sentiment_par_mois.index[0]} et {sentiment_par_mois.index[-1]}.\n"
+    elif evolution_pos < 0:
+        commentaire += f"- Les feedbacks **positifs ont diminué** de {-evolution_pos} sur la même période.\n"
+    else:
+        commentaire += "- Les feedbacks **positifs sont restés stables**.\n"
+
+    if evolution_neg > 0:
+        commentaire += f"- Les feedbacks **négatifs ont augmenté** de {evolution_neg}.\n"
+    elif evolution_neg < 0:
+        commentaire += f"- Les feedbacks **négatifs ont diminué** de {-evolution_neg}.\n"
+    else:
+        commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
+
+    print(commentaire)
 
     # TF-IDF + Clustering
     st.subheader("📌 Clustering thématique + renommage automatique avec IA")

@@ -13,3 +13,4 @@ sentence-transformers
 transformers
 tqdm
 pillow
+tensorflow-cpu

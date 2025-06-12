@@ -329,7 +329,7 @@ if uploaded_file:
         sentiment_region,
         geojson=togo_geo,
         featureidkey="properties.region",  # doit correspondre au champ dans GeoJSON
-        locations='region',
+        locations='région',
         color='sentiment',
         color_continuous_scale="RdYlGn",
         range_color=(-1, 1),

@@ -16,6 +16,7 @@ from nltk.corpus import stopwords
 from textblob import TextBlob
 from sklearn.linear_model import LinearRegression
 from openai import OpenAI
+from seaborn import color_palette
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -224,10 +225,10 @@ if uploaded_file:
         
         # Tracer le graphique avec lignes de tendance
         plt.figure(figsize=(12, 6))
-
+        colors = color_palette("coolwarm", 2)
         sentiment_par_mois.plot(
             kind='bar',
-            color={'POS': '#66bb6a', 'NEG': '#ef5350'},
+            color={'POS': colors[1], 'NEG': colors[0]},
             edgecolor='black',
             width=0.75,
             ax=plt.gca()
@@ -237,14 +238,14 @@ if uploaded_file:
             y = sentiment_par_mois[sentiment].values
             model = LinearRegression().fit(mois_index, y)
             trend = model.predict(mois_index)
-            plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
+            plt.plot(sentiment_par_mois.index, trend, linestyle='..', linewidth=1, label=f"Tendance {sentiment}")
 
         # Finalisation
         plt.title("Évolution des sentiments par mois avec tendance \n")
         plt.xlabel("Période")
         plt.ylabel("Nombre de feedbacks")
         plt.xticks(rotation=45)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.grid(axis='y', linestyle='..', alpha=0.7)
         plt.legend(title="Légende")
         plt.tight_layout()
         plt.show()
@@ -273,7 +274,7 @@ if uploaded_file:
         else:
             commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
 
-        st.markdown(commentaire)
+        #st.markdown(commentaire)
         
     with col9:
         # Graphique des sentiments par type d'activité
@@ -298,38 +299,6 @@ if uploaded_file:
     with col11:
         # Commentaires des boîtes à moustaches
         # Préparer les données
-        df_plot = sentiment_par_mois.reset_index().melt(id_vars='index', value_vars=['POS', 'NEG'],
-                                                        var_name='sentiment', value_name='count')
-        df_plot.rename(columns={'index': 'mois'}, inplace=True)
-        
-        # Préparer index numérique pour la régression
-        mois_uniques = df_plot['mois'].unique()
-        mois_index_map = {mois: i for i, mois in enumerate(mois_uniques)}
-        df_plot['mois_idx'] = df_plot['mois'].map(mois_index_map)
-        
-        # Tracer les barres avec seaborn
-        plt.figure(figsize=(12, 6))
-        sns.barplot(data=df_plot, x='mois', y='count', hue='sentiment',
-                    palette={'POS': '#66bb6a', 'NEG': '#ef5350'}, edgecolor='black')
-        
-        # Ajouter les lignes de tendance
-        for sentiment in ['POS', 'NEG']:
-            subset = df_plot[df_plot['sentiment'] == sentiment]
-            X = subset['mois_idx'].values.reshape(-1, 1)
-            y = subset['count'].values
-            model = LinearRegression().fit(X, y)
-            trend = model.predict(X)
-            plt.plot(subset['mois'], trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
-        
-        # Finalisation
-        plt.title("Évolution des sentiments par mois avec tendance \n")
-        plt.xlabel("Période")
-        plt.ylabel("Nombre de feedbacks")
-        plt.xticks(rotation=45)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.legend(title="Légende")
-        plt.tight_layout()
-        st.pyplot(plt)
         st.markdown("")
         
     col12, col13 = st.columns(2)

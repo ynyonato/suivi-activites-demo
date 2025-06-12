@@ -115,12 +115,11 @@ if uploaded_file:
     
     st.subheader("📊 Indicateurs de suivi d'activités")
     # 📊 Bloc 1 : indicateurs rapides (métriques)
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Nombre total d’activités", len(df))
     col2.metric("Régions couvertes", df['région'].nunique())
-    col3.metric("Score de sentiment moyen", round(df['sentiment'].mean(), 2))
-    # 1. Nombre total d'activités
-    st.metric("📌 Nombre total d’activités", len(df))
+    col3.metric("Localisations couvertes", df['localisation'].nunique())
+    col4.metric("Score de sentiment moyen", round(df['sentiment'].mean(), 2))
     
     st.subheader("📈 Evolution du projet")
     col1, col2 = st.columns(2)
@@ -128,7 +127,7 @@ if uploaded_file:
         # 4. Activités par localisation
         activites_par_localisation = df['localisation'].value_counts()
         fig3, ax3 = plt.subplots()
-        sns.barplot(x=activites_par_localisation.values, y=activites_par_localisation.index, palette='Greens_r', ax=ax3)
+        sns.barplot(x=activites_par_localisation.values, y=activites_par_localisation.index, palette='coolwarm', ax=ax3)
         ax3.set_title("📍 Nombre total d’activités par localisation")
         st.pyplot(fig3)
     
@@ -136,7 +135,7 @@ if uploaded_file:
         # 3. Activités par région
         activites_par_region = df['région'].value_counts()
         fig2, ax2 = plt.subplots()
-        sns.barplot(x=activites_par_region.values, y=activites_par_region.index, palette='Blues_r', ax=ax2)
+        sns.barplot(x=activites_par_region.values, y=activites_par_region.index, palette='coolwarm', ax=ax2)
         ax2.set_title("📍 Nombre total d’activités par région")
         st.pyplot(fig2)  
     
@@ -144,10 +143,9 @@ if uploaded_file:
     col3, col4, col5 = st.columns(3)
     with col3:
         # 5. Évolution par jour et région
-        st.subheader("📈 Activités par jour et par région")
         df_region = df.dropna(subset=['date', 'région'])
         activites_jour_region = df_region.groupby(['date', 'région']).size().reset_index(name='count')
-        fig4, ax4 = plt.subplots(figsize=(5, 4))
+        fig4, ax4 = plt.subplots(figsize=(10, 4))
         sns.lineplot(data=activites_jour_region, x='date', y='count', hue='région', ax=ax4)
         ax4.set_title("📈 Activités par jour et région")
         ax4.set_xlabel("Date")
@@ -158,7 +156,7 @@ if uploaded_file:
         # 6. Évolution par jour et type d’activités
         df_type = df.dropna(subset=['date', 'type_activite'])
         activites_jour_type = df_type.groupby(['date', 'type_activite']).size().reset_index(name='count')
-        fig5, ax5 = plt.subplots(figsize=(5, 4))
+        fig5, ax5 = plt.subplots(figsize=(10, 4))
         sns.lineplot(data=activites_jour_type, x='date', y='count', hue='type_activite', ax=ax5)
         ax5.set_title("📈 Activités par jour et type d’activité")
         ax5.set_xlabel("Date")
@@ -168,7 +166,7 @@ if uploaded_file:
     with col5:
          # 2. Nombre d’activités par jour
          activites_par_jour = df.groupby('date').size()
-         fig1, ax1 = plt.subplots(figsize=(5, 4))
+         fig1, ax1 = plt.subplots(figsize=(10, 4))
          sns.lineplot(data=activites_par_jour, ax=ax1)
          ax1.set_title("📅 Évolution du nombre d’activités par jour")
          ax1.set_xlabel("Date")
@@ -186,7 +184,7 @@ if uploaded_file:
         sentiment_loc = df.groupby('localisation')['sentiment'].mean().reset_index().dropna()
         fig1, ax1 = plt.subplots(figsize=(10, 4))
         sns.barplot(data=sentiment_loc, x='sentiment', y='localisation', palette='coolwarm', ax=ax1)
-        ax1.set_title("💬 Sentiment moyen par localisation")
+        ax1.set_title("Sentiment moyen par localisation")
         ax1.set_xlabel("Score de sentiment")
         ax1.set_ylabel("Localisation")
         st.pyplot(fig1)
@@ -196,116 +194,123 @@ if uploaded_file:
         sentiment_reg = df.groupby('région')['sentiment'].mean().reset_index().dropna()
         fig2, ax2 = plt.subplots(figsize=(10, 4))
         sns.barplot(data=sentiment_reg, x='sentiment', y='région', palette='coolwarm', ax=ax2)
-        ax2.set_title("💬 Sentiment moyen par région")
+        ax2.set_title("Sentiment moyen par région")
         ax2.set_xlabel("Score de sentiment")
         ax2.set_ylabel("Région")
         st.pyplot(fig2)
     
-    # 3. Sentiment par type d’activité
-    sentiment_type = df.groupby('type_activite')['sentiment'].mean().reset_index().dropna()
-    fig3, ax3 = plt.subplots(figsize=(10, 4))
-    sns.barplot(data=sentiment_type, x='sentiment', y='type_activite', palette='coolwarm', ax=ax3)
-    ax3.set_title("💬 Sentiment moyen par type d’activité")
-    ax3.set_xlabel("Score de sentiment")
-    ax3.set_ylabel("Type d’activité")
-    st.pyplot(fig3)
+    col8, col9 = st.columns(2)
+    with col8:
+        # 3. Sentiment par type d’activité
+        # Nettoyage des feedbacks
+        df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
+        feedbacks = df['feedback'].astype(str).tolist()
         
-    # Graphique des sentiments par type d'activité
-    plt.figure(figsize=(10,6))
-    sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
-    plt.title("Sentiments par Type d'Activité \n")
-    plt.xticks(rotation=45)
-    #plt.show()
-    st.pyplot(plt)
+        df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
 
-    # Croisement nombre participants vs sentiment (boxplot)
-    plt.figure(figsize=(8,5))
-    sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
-    plt.title("Répartition des participants par sentiment \n")
-    plt.show()
-    st.pyplot(plt)
+        # Créer une copie filtrée pour analyse
+        df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()
 
-    # Wordcloud
-    st.subheader("☁️ Nuage de mots")
-    wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(' '.join(df['Feedback_clean']))
-    plt.figure(figsize=(12, 5))
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis("off")
-    st.pyplot(plt)
+        # Créer colonne mois-année
+        df_filtered['mois_annee'] = df_filtered['date'].dt.to_period('M').astype(str)
+
+        # Agrégation des feedbacks par mois et sentiment
+        sentiment_par_mois = df_filtered.groupby(['mois_annee', 'sentiment_label']).size().unstack(fill_value=0)
+
+        # Convertir l'index en entier pour les régressions
+        mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
+
+        sentiment_par_mois = sentiment_par_mois.astype(int)
+        
+        # Tracer le graphique avec lignes de tendance
+        plt.figure(figsize=(12, 6))
+
+        sentiment_par_mois.plot(
+            kind='bar',
+            color={'POS': '#66bb6a', 'NEG': '#ef5350'},
+            edgecolor='black',
+            width=0.75,
+            ax=plt.gca()
+        )
+        # Ajout des courbes de tendance
+        for sentiment in ['POS', 'NEG']:
+            y = sentiment_par_mois[sentiment].values
+            model = LinearRegression().fit(mois_index, y)
+            trend = model.predict(mois_index)
+            plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
+
+        # Finalisation
+        plt.title("Évolution des sentiments par mois avec tendance \n")
+        plt.xlabel("Mois-Année")
+        plt.ylabel("Nombre de feedbacks")
+        plt.xticks(rotation=45)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.legend(title="Légende")
+        plt.tight_layout()
+        plt.show()
+        st.pyplot(plt)
+
+        # === Génération d'un commentaire automatique ===
+        last = sentiment_par_mois.iloc[-1]
+        first = sentiment_par_mois.iloc[0]
+
+        evolution_pos = last['POS'] - first['POS']
+        evolution_neg = last['NEG'] - first['NEG']
+
+        commentaire = "🔎 **Analyse automatique :**\n"
+
+        if evolution_pos > 0:
+            commentaire += f"- Les feedbacks **positifs ont augmenté** de {evolution_pos} entre {sentiment_par_mois.index[0]} et {sentiment_par_mois.index[-1]}.\n"
+        elif evolution_pos < 0:
+            commentaire += f"- Les feedbacks **positifs ont diminué** de {-evolution_pos} sur la même période.\n"
+        else:
+            commentaire += "- Les feedbacks **positifs sont restés stables**.\n"
+
+        if evolution_neg > 0:
+            commentaire += f"- Les feedbacks **négatifs ont augmenté** de {evolution_neg}.\n"
+        elif evolution_neg < 0:
+            commentaire += f"- Les feedbacks **négatifs ont diminué** de {-evolution_neg}.\n"
+        else:
+            commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
+
+        st.markdown(commentaire)
+        
+    with col9:
+        # Graphique des sentiments par type d'activité
+        plt.figure(figsize=(10,6))
+        sns.countplot(data=df, x='type_activite', hue='sentiment_cat', palette='coolwarm')
+        plt.title("Sentiments par Type d'Activité \n")
+        plt.xticks(rotation=35)
+        #plt.show()
+        st.pyplot(plt)
+        
+    col10, col11 = st.columns(2)
+    with col10:
+        # Croisement nombre participants vs sentiment (boxplot)
+        plt.figure(figsize=(8,5))
+        sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
+        plt.title("Répartition des participants par sentiment \n")
+        plt.show()
+        st.pyplot(plt)
     
-    # Nettoyage des feedbacks
-    df = df.dropna(subset=['feedback'])  # Retirer les lignes sans feedback
-    feedbacks = df['feedback'].astype(str).tolist()
+    with col11:
+        # Commentaires des boîtes à moustaches
+        st.markdown("")
+        
+    col12, col13 = st.columns(2)
+    with col12:
+        # Wordcloud
+        wordcloud = WordCloud(width=1000, height=400, background_color='white').generate(' '.join(df['Feedback_clean']))
+        plt.figure(figsize=(12, 5))
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+        st.pyplot(plt)
     
-    df['sentiment_label'] = df['sentiment'].apply(classer_sentiment)
-
-    # Créer une copie filtrée pour analyse
-    df_filtered = df[df['sentiment_label'].isin(['POS', 'NEG'])].copy()
-
-    # Créer colonne mois-année
-    df_filtered['mois_annee'] = df_filtered['date'].dt.to_period('M').astype(str)
-
-    # Agrégation des feedbacks par mois et sentiment
-    sentiment_par_mois = df_filtered.groupby(['mois_annee', 'sentiment_label']).size().unstack(fill_value=0)
-
-    # Convertir l'index en entier pour les régressions
-    mois_index = np.arange(len(sentiment_par_mois)).reshape(-1, 1)
-
-    sentiment_par_mois = sentiment_par_mois.astype(int)
+    with col13:
+        # Commentaires du nuage de mots
+        st.markdown("")
+        st.subheader("☁️ Nuage de mots")
     
-    # Tracer le graphique avec lignes de tendance
-    plt.figure(figsize=(12, 6))
-
-    sentiment_par_mois.plot(
-        kind='bar',
-        color={'POS': '#66bb6a', 'NEG': '#ef5350'},
-        edgecolor='black',
-        width=0.75,
-        ax=plt.gca()
-    )
-    # Ajout des courbes de tendance
-    for sentiment in ['POS', 'NEG']:
-        y = sentiment_par_mois[sentiment].values
-        model = LinearRegression().fit(mois_index, y)
-        trend = model.predict(mois_index)
-        plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=2, label=f"Tendance {sentiment}")
-
-    # Finalisation
-    plt.title("Évolution des sentiments par mois avec tendance \n")
-    plt.xlabel("Mois-Année")
-    plt.ylabel("Nombre de feedbacks")
-    plt.xticks(rotation=45)
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
-    plt.legend(title="Légende")
-    plt.tight_layout()
-    plt.show()
-    st.pyplot(plt)
-
-    # === Génération d'un commentaire automatique ===
-    last = sentiment_par_mois.iloc[-1]
-    first = sentiment_par_mois.iloc[0]
-
-    evolution_pos = last['POS'] - first['POS']
-    evolution_neg = last['NEG'] - first['NEG']
-
-    commentaire = "🔎 **Analyse automatique :**\n"
-
-    if evolution_pos > 0:
-        commentaire += f"- Les feedbacks **positifs ont augmenté** de {evolution_pos} entre {sentiment_par_mois.index[0]} et {sentiment_par_mois.index[-1]}.\n"
-    elif evolution_pos < 0:
-        commentaire += f"- Les feedbacks **positifs ont diminué** de {-evolution_pos} sur la même période.\n"
-    else:
-        commentaire += "- Les feedbacks **positifs sont restés stables**.\n"
-
-    if evolution_neg > 0:
-        commentaire += f"- Les feedbacks **négatifs ont augmenté** de {evolution_neg}.\n"
-    elif evolution_neg < 0:
-        commentaire += f"- Les feedbacks **négatifs ont diminué** de {-evolution_neg}.\n"
-    else:
-        commentaire += "- Les feedbacks **négatifs sont restés stables**.\n"
-
-    st.markdown(commentaire)
-
     # TF-IDF + Clustering
     st.subheader("📌 Clustering thématique + renommage automatique avec IA")
     vectorizer = TfidfVectorizer(max_features=500, max_df=0.8, min_df=5)
@@ -358,7 +363,7 @@ if uploaded_file:
     valider_correspondance_geojson(df, togo_geo, csv_col='région', geojson_prop='region_clean')
     
     # ✅ 3. Préparation des données sentiment par région
-    sentiment_region = df.groupby('region_clean')['sentiment'].mean().reset_index()
+    sentiment_region = df.groupby('region')['sentiment'].mean().reset_index()
     sentiment_region.columns = ['region', 'sentiment']  # IMPORTANT : correspond au champ GeoJSON "region_clean"
     
     # ✅ 4. Création de la carte

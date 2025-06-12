@@ -193,7 +193,7 @@ if uploaded_file:
     with col7:
         # 2. Sentiment par région
         sentiment_reg = df.groupby('région')['sentiment'].mean().reset_index().dropna()
-        fig2, ax2 = plt.subplots(figsize=(10, 4))
+        fig2, ax2 = plt.subplots(figsize=(12, 6))
         sns.barplot(data=sentiment_reg, x='sentiment', y='région', palette='coolwarm', ax=ax2)
         ax2.set_title("Sentiment moyen par région")
         ax2.set_xlabel("Score de sentiment")
@@ -372,19 +372,35 @@ if uploaded_file:
     
     # ✅ 4. Création de la carte
     fig = px.choropleth(
-        sentiment_region,
-        geojson=togo_geo,
-        featureidkey="properties.region_clean",  # correspondance personnalisée
-        locations='region',
-        color='sentiment',
-        color_continuous_scale="RdYlGn",
-        range_color=(-0.1, 0.1),
-        labels={'sentiment': 'Score de sentiment'},
-        title="💬 Sentiment moyen par région du Togo"
+    sentiment_region,
+    geojson=togo_geo,
+    featureidkey="properties.region_clean",
+    locations='region',
+    color='sentiment',
+    color_continuous_scale="RdYlGn",
+    range_color=(-0.1, 0.1),
+    labels={'sentiment': 'Score de sentiment'},
+    title="💬 Sentiment moyen par région du Togo"
+    )
+    
+    # Nettoyage du fond
+    fig.update_layout(
+    paper_bgcolor='white',
+    plot_bgcolor='white',
+    margin={"r":0,"t":50,"l":0,"b":0}
     )
     
     # 🔍 Zoom automatique sur les formes géographiques
-    fig.update_geos(fitbounds="locations", visible=False)
+    fig.update_geos(
+    showland=True,
+    landcolor='white',
+    showcountries=True,
+    showframe=False,
+    showcoastlines=False,
+    bgcolor='white',
+    fitbounds="locations"
+    )
+    #fig.update_geos(fitbounds="locations", visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
     # Affichage enrichi

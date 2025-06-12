@@ -80,7 +80,30 @@ if uploaded_file:
         )
         return response.choices[0].message.content.strip()
        
-
+    
+    # Checking matching between csv and json
+    def valider_correspondance_geojson(df, geojson, csv_col='région', geojson_prop='region'):
+        # Extraire les noms uniques du CSV
+        regions_csv = set(df[csv_col].dropna().unique())
+    
+        # Extraire les noms du GeoJSON
+        regions_geojson = set([f["properties"].get(geojson_prop, "").strip() for f in geojson["features"]])
+    
+        # Trouver les correspondances manquantes
+        dans_csv_pas_geojson = regions_csv - regions_geojson
+        dans_geojson_pas_csv = regions_geojson - regions_csv
+    
+        st.subheader("🔍 Validation des noms de régions")
+        st.markdown(f"**✔️ Noms communs** : {regions_csv & regions_geojson}")
+    
+        if dans_csv_pas_geojson:
+            st.error(f"❌ Ces régions sont dans le CSV mais pas dans le GeoJSON : {dans_csv_pas_geojson}")
+        if dans_geojson_pas_csv:
+            st.warning(f"⚠️ Ces régions sont dans le GeoJSON mais absentes du CSV : {dans_geojson_pas_csv}")
+    
+        if not dans_csv_pas_geojson and not dans_geojson_pas_csv:
+            st.success("✅ Toutes les régions correspondent parfaitement.")
+        
     # Conversion des données de la colonne Date en type date
     df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d', errors='coerce')
 
@@ -320,10 +343,12 @@ if uploaded_file:
     with open("togo_Regions_level_1.geojson", "r", encoding="utf-8") as f:
         togo_geo = json.load(f)
     
+    valider_correspondance_geojson(df, togo_geo, csv_col='région', geojson_prop='region')
+    
     # Sentiment par région (en s'assurant que les noms correspondent au GeoJSON)
     sentiment_region = df.groupby('région')['sentiment'].mean().reset_index()
     sentiment_region.columns = ['région', 'sentiment']
-    
+
     # Carte choroplèthe
     fig = px.choropleth(
         sentiment_region,

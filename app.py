@@ -332,7 +332,7 @@ if uploaded_file:
         locations='région',
         color='sentiment',
         color_continuous_scale="RdYlGn",
-        range_color=(-1, 1),
+        range_color=(-0.5, 0.5),
         labels={'sentiment': 'Score de sentiment'},
         title="💬 Sentiment moyen par région du Togo"
     )

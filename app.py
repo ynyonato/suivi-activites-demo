@@ -315,14 +315,14 @@ if uploaded_file:
     st.plotly_chart(fig, use_container_width=True)
     
     # Affichage de la carte du Togo
-    sentiment_par_region = df.groupby('region')['sentiment'].mean().reset_index()
+    sentiment_par_region = df.groupby('région')['sentiment'].mean().reset_index()
     # Charger le fichier GeoJSON
     with open("togo_Regions_level_1.geojson", "r", encoding="utf-8") as f:
         togo_geo = json.load(f)
     
     # Sentiment par région (en s'assurant que les noms correspondent au GeoJSON)
     sentiment_region = df.groupby('région')['sentiment'].mean().reset_index()
-    sentiment_region.columns = ['region', 'sentiment']
+    sentiment_region.columns = ['région', 'sentiment']
     
     # Carte choroplèthe
     fig = px.choropleth(

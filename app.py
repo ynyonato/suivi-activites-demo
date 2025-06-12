@@ -365,7 +365,7 @@ if uploaded_file:
     valider_correspondance_geojson(df, togo_geo, csv_col='région', geojson_prop='region_clean')
     
     # ✅ 3. Préparation des données sentiment par région
-    sentiment_region = df.groupby('region')['sentiment'].mean().reset_index()
+    sentiment_region = df.groupby('région')['sentiment'].mean().reset_index()
     sentiment_region.columns = ['region', 'sentiment']  # IMPORTANT : correspond au champ GeoJSON "region_clean"
     
     # ✅ 4. Création de la carte

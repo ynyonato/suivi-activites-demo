@@ -238,14 +238,14 @@ if uploaded_file:
             y = sentiment_par_mois[sentiment].values
             model = LinearRegression().fit(mois_index, y)
             trend = model.predict(mois_index)
-            plt.plot(sentiment_par_mois.index, trend, linestyle='..', linewidth=1, label=f"Tendance {sentiment}")
+            plt.plot(sentiment_par_mois.index, trend, linestyle='--', linewidth=1, label=f"Tendance {sentiment}")
 
         # Finalisation
         plt.title("Évolution des sentiments par mois avec tendance \n")
         plt.xlabel("Période")
         plt.ylabel("Nombre de feedbacks")
         plt.xticks(rotation=45)
-        plt.grid(axis='y', linestyle='..', alpha=0.7)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
         plt.legend(title="Légende")
         plt.tight_layout()
         plt.show()

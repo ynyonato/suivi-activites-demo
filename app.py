@@ -288,7 +288,7 @@ if uploaded_file:
     with col10:
         # Croisement nombre participants vs sentiment (boxplot)
         plt.figure(figsize=(8,5))
-        sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants')
+        sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants', linewidth=.75, palette='coolwarm')
         plt.title("Répartition des participants par sentiment \n")
         plt.show()
         st.pyplot(plt)
@@ -308,8 +308,8 @@ if uploaded_file:
     
     with col13:
         # Commentaires du nuage de mots
-        st.markdown("")
-        st.subheader("☁️ Nuage de mots")
+        st.markdown("☁️ Nuage de mots")
+
     
     # TF-IDF + Clustering
     st.subheader("📌 Clustering thématique + renommage automatique avec IA")

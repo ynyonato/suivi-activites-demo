@@ -290,6 +290,8 @@ if uploaded_file:
         plt.figure(figsize=(8,5))
         sns.boxplot(data=df, x='sentiment_cat', y='nombre_participants', linewidth=.75, palette='coolwarm')
         plt.title("Répartition des participants par sentiment \n")
+        plt.xlabel("Catégorie de sentiment")
+        plt.ylabel("Nombre de participants")
         plt.show()
         st.pyplot(plt)
     

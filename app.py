@@ -328,7 +328,7 @@ if uploaded_file:
     fig = px.choropleth(
         sentiment_region,
         geojson=togo_geo,
-        featureidkey="properties.region",  # doit correspondre au champ dans GeoJSON
+        featureidkey="properties.région",  # doit correspondre au champ dans GeoJSON
         locations='région',
         color='sentiment',
         color_continuous_scale="RdYlGn",
@@ -337,7 +337,7 @@ if uploaded_file:
         title="💬 Sentiment moyen par région du Togo"
     )
     
-    fig.update_geos(fitbounds="locations", visible=False)
+    fig.update_geos(fitbounds="locations", visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
     # Affichage enrichi

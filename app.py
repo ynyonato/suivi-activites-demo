@@ -7,6 +7,7 @@ import plotly.express as px
 import nltk
 import string
 import re
+import json
 from wordcloud import WordCloud
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
@@ -88,6 +89,88 @@ if uploaded_file:
     df['Feedback_clean'] = df['feedback'].apply(clean_text)
     df['sentiment'] = df['Feedback_clean'].apply(compute_sentiment)
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
+    
+    st.subheader("📊 Indicateurs de suivi d'activités")
+    # 1. Nombre total d'activités
+    st.metric("📌 Nombre total d’activités", len(df))
+    
+    # 2. Nombre d’activités par jour
+    activites_par_jour = df.groupby('date').size()
+    fig1, ax1 = plt.subplots(figsize=(10, 4))
+    sns.lineplot(data=activites_par_jour, ax=ax1)
+    ax1.set_title("📅 Évolution du nombre d’activités par jour")
+    ax1.set_xlabel("Date")
+    ax1.set_ylabel("Nombre d’activités")
+    st.pyplot(fig1)
+    
+    # 3. Activités par région
+    activites_par_region = df['région'].value_counts()
+    fig2, ax2 = plt.subplots()
+    sns.barplot(x=activites_par_region.values, y=activites_par_region.index, palette='Blues_r', ax=ax2)
+    ax2.set_title("📍 Nombre total d’activités par région")
+    st.pyplot(fig2)
+    
+    # 4. Activités par localisation
+    activites_par_localisation = df['localisation'].value_counts()
+    fig3, ax3 = plt.subplots()
+    sns.barplot(x=activites_par_localisation.values, y=activites_par_localisation.index, palette='Greens_r', ax=ax3)
+    ax3.set_title("📍 Nombre total d’activités par localisation")
+    st.pyplot(fig3)
+    
+    # 5. Évolution par jour et région
+    st.subheader("📈 Activités par jour et par région")
+    df_region = df.dropna(subset=['date', 'région'])
+    activites_jour_region = df_region.groupby(['date', 'région']).size().reset_index(name='count')
+    fig4, ax4 = plt.subplots(figsize=(12, 5))
+    sns.lineplot(data=activites_jour_region, x='date', y='count', hue='région', ax=ax4)
+    ax4.set_title("📈 Activités par jour et région")
+    ax4.set_xlabel("Date")
+    ax4.set_ylabel("Nombre d’activités")
+    st.pyplot(fig4)
+    
+    # 6. Évolution par jour et type d’activités
+    st.subheader("📈 Activités par jour et par type d’activité")
+    df_type = df.dropna(subset=['date', 'type_activite'])
+    activites_jour_type = df_type.groupby(['date', 'type_activite']).size().reset_index(name='count')
+    fig5, ax5 = plt.subplots(figsize=(12, 5))
+    sns.lineplot(data=activites_jour_type, x='date', y='count', hue='type_activite', ax=ax5)
+    ax5.set_title("📈 Activités par jour et type d’activité")
+    ax5.set_xlabel("Date")
+    ax5.set_ylabel("Nombre d’activités")
+    st.pyplot(fig5)
+    
+    
+    st.subheader("🗺️ Cartographies des sentiments")
+
+    # Assurer que les données sont au bon format
+    df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+    
+    # 1. Sentiment par localisation
+    sentiment_loc = df.groupby('localisation')['sentiment'].mean().reset_index().dropna()
+    fig1, ax1 = plt.subplots(figsize=(10, 4))
+    sns.barplot(data=sentiment_loc, x='sentiment', y='localisation', palette='coolwarm', ax=ax1)
+    ax1.set_title("💬 Sentiment moyen par localisation")
+    ax1.set_xlabel("Score de sentiment")
+    ax1.set_ylabel("Localisation")
+    st.pyplot(fig1)
+    
+    # 2. Sentiment par région
+    sentiment_reg = df.groupby('région')['sentiment'].mean().reset_index().dropna()
+    fig2, ax2 = plt.subplots(figsize=(10, 4))
+    sns.barplot(data=sentiment_reg, x='sentiment', y='région', palette='coolwarm', ax=ax2)
+    ax2.set_title("💬 Sentiment moyen par région")
+    ax2.set_xlabel("Score de sentiment")
+    ax2.set_ylabel("Région")
+    st.pyplot(fig2)
+    
+    # 3. Sentiment par type d’activité
+    sentiment_type = df.groupby('type_activite')['sentiment'].mean().reset_index().dropna()
+    fig3, ax3 = plt.subplots(figsize=(10, 4))
+    sns.barplot(data=sentiment_type, x='sentiment', y='type_activite', palette='coolwarm', ax=ax3)
+    ax3.set_title("💬 Sentiment moyen par type d’activité")
+    ax3.set_xlabel("Score de sentiment")
+    ax3.set_ylabel("Type d’activité")
+    st.pyplot(fig3)
         
     # Graphique des sentiments par type d'activité
     plt.figure(figsize=(10,6))
@@ -229,6 +312,32 @@ if uploaded_file:
         hover_data=['feedback', 'type_activite', 'région'],
         title="📍 Visualisation t-SNE avec thèmes IA"
     )
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Affichage de la carte du Togo
+    sentiment_par_region = df.groupby('region')['sentiment'].mean().reset_index()
+    # Charger le fichier GeoJSON
+    with open("togo_Regions_level_1.geojson", "r", encoding="utf-8") as f:
+        togo_geo = json.load(f)
+    
+    # Sentiment par région (en s'assurant que les noms correspondent au GeoJSON)
+    sentiment_region = df.groupby('région')['sentiment'].mean().reset_index()
+    sentiment_region.columns = ['region', 'sentiment']
+    
+    # Carte choroplèthe
+    fig = px.choropleth(
+        sentiment_region,
+        geojson=togo_geo,
+        featureidkey="properties.region",  # doit correspondre au champ dans GeoJSON
+        locations='region',
+        color='sentiment',
+        color_continuous_scale="RdYlGn",
+        range_color=(-1, 1),
+        labels={'sentiment': 'Score de sentiment'},
+        title="💬 Sentiment moyen par région du Togo"
+    )
+    
+    fig.update_geos(fitbounds="locations", visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
     # Affichage enrichi

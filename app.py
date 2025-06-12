@@ -114,77 +114,92 @@ if uploaded_file:
     df['sentiment_cat'] = df['sentiment'].apply(classify_sentiment)
     
     st.subheader("📊 Indicateurs de suivi d'activités")
+    # 📊 Bloc 1 : indicateurs rapides (métriques)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Nombre total d’activités", len(df))
+    col2.metric("Régions couvertes", df['région'].nunique())
+    col3.metric("Score de sentiment moyen", round(df['sentiment'].mean(), 2))
     # 1. Nombre total d'activités
     st.metric("📌 Nombre total d’activités", len(df))
     
-    # 2. Nombre d’activités par jour
-    activites_par_jour = df.groupby('date').size()
-    fig1, ax1 = plt.subplots(figsize=(10, 4))
-    sns.lineplot(data=activites_par_jour, ax=ax1)
-    ax1.set_title("📅 Évolution du nombre d’activités par jour")
-    ax1.set_xlabel("Date")
-    ax1.set_ylabel("Nombre d’activités")
-    st.pyplot(fig1)
+    st.subheader("📈 Evolution du projet")
+    col1, col2 = st.columns(2)
+    with col1:
+        # 4. Activités par localisation
+        activites_par_localisation = df['localisation'].value_counts()
+        fig3, ax3 = plt.subplots()
+        sns.barplot(x=activites_par_localisation.values, y=activites_par_localisation.index, palette='Greens_r', ax=ax3)
+        ax3.set_title("📍 Nombre total d’activités par localisation")
+        st.pyplot(fig3)
     
-    # 3. Activités par région
-    activites_par_region = df['région'].value_counts()
-    fig2, ax2 = plt.subplots()
-    sns.barplot(x=activites_par_region.values, y=activites_par_region.index, palette='Blues_r', ax=ax2)
-    ax2.set_title("📍 Nombre total d’activités par région")
-    st.pyplot(fig2)
+    with col2:
+        # 3. Activités par région
+        activites_par_region = df['région'].value_counts()
+        fig2, ax2 = plt.subplots()
+        sns.barplot(x=activites_par_region.values, y=activites_par_region.index, palette='Blues_r', ax=ax2)
+        ax2.set_title("📍 Nombre total d’activités par région")
+        st.pyplot(fig2)  
     
-    # 4. Activités par localisation
-    activites_par_localisation = df['localisation'].value_counts()
-    fig3, ax3 = plt.subplots()
-    sns.barplot(x=activites_par_localisation.values, y=activites_par_localisation.index, palette='Greens_r', ax=ax3)
-    ax3.set_title("📍 Nombre total d’activités par localisation")
-    st.pyplot(fig3)
+    st.subheader("📈 Evolution Temporelle des activités")
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        # 5. Évolution par jour et région
+        st.subheader("📈 Activités par jour et par région")
+        df_region = df.dropna(subset=['date', 'région'])
+        activites_jour_region = df_region.groupby(['date', 'région']).size().reset_index(name='count')
+        fig4, ax4 = plt.subplots(figsize=(5, 4))
+        sns.lineplot(data=activites_jour_region, x='date', y='count', hue='région', ax=ax4)
+        ax4.set_title("📈 Activités par jour et région")
+        ax4.set_xlabel("Date")
+        ax4.set_ylabel("Nombre d’activités")
+        st.pyplot(fig4)
     
-    # 5. Évolution par jour et région
-    st.subheader("📈 Activités par jour et par région")
-    df_region = df.dropna(subset=['date', 'région'])
-    activites_jour_region = df_region.groupby(['date', 'région']).size().reset_index(name='count')
-    fig4, ax4 = plt.subplots(figsize=(12, 5))
-    sns.lineplot(data=activites_jour_region, x='date', y='count', hue='région', ax=ax4)
-    ax4.set_title("📈 Activités par jour et région")
-    ax4.set_xlabel("Date")
-    ax4.set_ylabel("Nombre d’activités")
-    st.pyplot(fig4)
-    
-    # 6. Évolution par jour et type d’activités
-    st.subheader("📈 Activités par jour et par type d’activité")
-    df_type = df.dropna(subset=['date', 'type_activite'])
-    activites_jour_type = df_type.groupby(['date', 'type_activite']).size().reset_index(name='count')
-    fig5, ax5 = plt.subplots(figsize=(12, 5))
-    sns.lineplot(data=activites_jour_type, x='date', y='count', hue='type_activite', ax=ax5)
-    ax5.set_title("📈 Activités par jour et type d’activité")
-    ax5.set_xlabel("Date")
-    ax5.set_ylabel("Nombre d’activités")
-    st.pyplot(fig5)
+    with col4:
+        # 6. Évolution par jour et type d’activités
+        df_type = df.dropna(subset=['date', 'type_activite'])
+        activites_jour_type = df_type.groupby(['date', 'type_activite']).size().reset_index(name='count')
+        fig5, ax5 = plt.subplots(figsize=(5, 4))
+        sns.lineplot(data=activites_jour_type, x='date', y='count', hue='type_activite', ax=ax5)
+        ax5.set_title("📈 Activités par jour et type d’activité")
+        ax5.set_xlabel("Date")
+        ax5.set_ylabel("Nombre d’activités")
+        st.pyplot(fig5)
+        
+    with col5:
+         # 2. Nombre d’activités par jour
+         activites_par_jour = df.groupby('date').size()
+         fig1, ax1 = plt.subplots(figsize=(5, 4))
+         sns.lineplot(data=activites_par_jour, ax=ax1)
+         ax1.set_title("📅 Évolution du nombre d’activités par jour")
+         ax1.set_xlabel("Date")
+         ax1.set_ylabel("Nombre d’activités")
+         st.pyplot(fig1)
     
     
     st.subheader("🗺️ Cartographies des sentiments")
 
     # Assurer que les données sont au bon format
     df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-    
-    # 1. Sentiment par localisation
-    sentiment_loc = df.groupby('localisation')['sentiment'].mean().reset_index().dropna()
-    fig1, ax1 = plt.subplots(figsize=(10, 4))
-    sns.barplot(data=sentiment_loc, x='sentiment', y='localisation', palette='coolwarm', ax=ax1)
-    ax1.set_title("💬 Sentiment moyen par localisation")
-    ax1.set_xlabel("Score de sentiment")
-    ax1.set_ylabel("Localisation")
-    st.pyplot(fig1)
-    
-    # 2. Sentiment par région
-    sentiment_reg = df.groupby('région')['sentiment'].mean().reset_index().dropna()
-    fig2, ax2 = plt.subplots(figsize=(10, 4))
-    sns.barplot(data=sentiment_reg, x='sentiment', y='région', palette='coolwarm', ax=ax2)
-    ax2.set_title("💬 Sentiment moyen par région")
-    ax2.set_xlabel("Score de sentiment")
-    ax2.set_ylabel("Région")
-    st.pyplot(fig2)
+    col6, col7 = st.columns(2)
+    with col6:
+        # 1. Sentiment par localisation
+        sentiment_loc = df.groupby('localisation')['sentiment'].mean().reset_index().dropna()
+        fig1, ax1 = plt.subplots(figsize=(10, 4))
+        sns.barplot(data=sentiment_loc, x='sentiment', y='localisation', palette='coolwarm', ax=ax1)
+        ax1.set_title("💬 Sentiment moyen par localisation")
+        ax1.set_xlabel("Score de sentiment")
+        ax1.set_ylabel("Localisation")
+        st.pyplot(fig1)
+        
+    with col7:
+        # 2. Sentiment par région
+        sentiment_reg = df.groupby('région')['sentiment'].mean().reset_index().dropna()
+        fig2, ax2 = plt.subplots(figsize=(10, 4))
+        sns.barplot(data=sentiment_reg, x='sentiment', y='région', palette='coolwarm', ax=ax2)
+        ax2.set_title("💬 Sentiment moyen par région")
+        ax2.set_xlabel("Score de sentiment")
+        ax2.set_ylabel("Région")
+        st.pyplot(fig2)
     
     # 3. Sentiment par type d’activité
     sentiment_type = df.groupby('type_activite')['sentiment'].mean().reset_index().dropna()
@@ -200,15 +215,6 @@ if uploaded_file:
     sns.countplot(data=df, x='type_activite', hue='sentiment_cat')
     plt.title("Sentiments par Type d'Activité \n")
     plt.xticks(rotation=45)
-    #plt.show()
-    st.pyplot(plt)
-
-    # Moyenne de sentiment par localisation
-    sentiment_localisation = df.groupby('localisation')['sentiment'].mean().sort_values()
-    plt.figure(figsize=(8,5))
-    sentiment_localisation.plot(kind='bar', color='skyblue')
-    plt.title("Moyenne du sentiment par localisation \n")
-    plt.ylabel("Score moyen de sentiment \n")
     #plt.show()
     st.pyplot(plt)
 

@@ -343,26 +343,33 @@ if uploaded_file:
     with open("togo_Regions_level_1.geojson", "r", encoding="utf-8") as f:
         togo_geo = json.load(f)
     
-    valider_correspondance_geojson(df, togo_geo, csv_col='région', geojson_prop='region')
+   # 🔍 1. Nettoyage de la propriété GeoJSON (retirer " Region")
+    for feature in togo_geo['features']:
+        region_name = feature['properties'].get('shape1', '')
+        feature['properties']['region_clean'] = region_name.replace(" Region", "").strip()
     
-    # Sentiment par région (en s'assurant que les noms correspondent au GeoJSON)
+    # ✅ 2. Validation (optionnelle mais utile)
+    valider_correspondance_geojson(df, togo_geo, csv_col='région', geojson_prop='region_clean')
+    
+    # ✅ 3. Préparation des données sentiment par région
     sentiment_region = df.groupby('région')['sentiment'].mean().reset_index()
-    sentiment_region.columns = ['région', 'sentiment']
-
-    # Carte choroplèthe
+    sentiment_region.columns = ['region', 'sentiment']  # IMPORTANT : correspond au champ GeoJSON "region_clean"
+    
+    # ✅ 4. Création de la carte
     fig = px.choropleth(
         sentiment_region,
         geojson=togo_geo,
-        featureidkey="properties.région",  # doit correspondre au champ dans GeoJSON
-        locations='région',
+        featureidkey="properties.region_clean",  # correspondance personnalisée
+        locations='region',
         color='sentiment',
         color_continuous_scale="RdYlGn",
-        range_color=(-0.5, 0.5),
+        range_color=(-0.1, 0.1),
         labels={'sentiment': 'Score de sentiment'},
         title="💬 Sentiment moyen par région du Togo"
     )
     
-    fig.update_geos(fitbounds="locations", visible=True)
+    # 🔍 Zoom automatique sur les formes géographiques
+    fig.update_geos(fitbounds="locations", visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
     # Affichage enrichi
